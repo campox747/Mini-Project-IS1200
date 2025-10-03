@@ -103,23 +103,38 @@ int main ( void )
   
   while(1)
   {
-    if (current_state == IDLE) {
+    // Game selection
+    while (get_sw() == 0x0 && current_state == IDLE) {
+
+      for (int i = 0; i < 6000000; i++) asm volatile ("nop");
       draw_image(VGA, 0);
-    }
-    while (get_sw() == 0x1 && current_state == IDLE)
-    {
-      // Arrow right
+
       draw_image(VGA, 1);
-      for (int i = 0; i < 9000000; i++) asm volatile ("nop");
-      
-      draw_image(VGA, 2);
-      for (int i = 0; i < 9000000; i++) asm volatile ("nop");
+      for (int i = 0; i < 6000000; i++) asm volatile ("nop");
     }
 
-    if (get_sw() == 0x8 && current_state == IDLE)
+    // Reaction game
+    while (get_sw() == 0x1 && current_state == IDLE)
     {
+      for (int i = 0; i < 6000000; i++) asm volatile ("nop");
+
+      // Arrow right
+      draw_image(VGA, 2);
+      for (int i = 0; i < 6000000; i++) asm volatile ("nop");
+      
+      draw_image(VGA, 3);
+    }
+
+    // Memorize game
+    while (get_sw() == 0x8 && current_state == IDLE)
+    {
+      for (int i = 0; i < 6000000; i++) asm volatile ("nop");
+
       // Arrow left
-     
+      draw_image(VGA, 4);
+      for (int i = 0; i < 6000000; i++) asm volatile ("nop");
+      
+      draw_image(VGA, 5);
     }
   }
 
