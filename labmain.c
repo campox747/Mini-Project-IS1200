@@ -96,45 +96,76 @@ void handle_interrupt(unsigned cause)
   // y_ofs= (y_ofs+ 1) % 240;
 }
 
-int main ( void ) 
+int main ( void ) // delays to adjust because it is slow in switching images
 {
   labinit();
   volatile unsigned char* VGA = (volatile unsigned char*)0x08000000;
   
+  // global logic
   while(1)
   {
     // Game selection
-    while (get_sw() == 0x0 && current_state == IDLE) {
+    while (get_sw() == 0x0 && current_state == IDLE) 
+    {
 
+      draw_image(VGA, 0); // gameselection1
       for (int i = 0; i < 6000000; i++) asm volatile ("nop");
-      draw_image(VGA, 0);
-
-      draw_image(VGA, 1);
+      
+      draw_image(VGA, 1); // gameselection2
       for (int i = 0; i < 6000000; i++) asm volatile ("nop");
     }
 
-    // Reaction game
+    int btn_pressed = 0;          // Button flag for reaction game (1 when button is pressed)
+    // Reaction game selection
     while (get_sw() == 0x1 && current_state == IDLE)
     {
+      draw_image(VGA, 2); // reactime1
       for (int i = 0; i < 6000000; i++) asm volatile ("nop");
 
-      // Arrow right
-      draw_image(VGA, 2);
-      for (int i = 0; i < 6000000; i++) asm volatile ("nop");
-      
-      draw_image(VGA, 3);
+      draw_image(VGA, 3); // reactime2
+      for (int i = 0; i < 6000000; i++) asm volatile ("nop"); 
+
+      if (get_btn())
+      {
+        current_state = RUNNING;
+        while(1)
+        {
+        draw_image(VGA, 6); // descreact
+
+          if (get_btn())
+          {
+            while(1)
+            {
+              draw_image(VGA, 7); // reactready
+              // random delay -> show go screen -> from that screen you make start a timer -> perform subtraction between initial time and the moment you stopped the timer
+
+              draw_image(VGA, 8); // reactgo
+
+              //When button is pressed, send interrupt - timer stops - time elapsed is displayed
+              // In handle interrupt function for the button, update the "btn_pressed" flag to avoid displaying the "too slow" screen
+
+              
+
+              if (btn_pressed == 0)
+              {
+                draw_image(VGA, 10); // tooslow
+              }
+
+              for (int i = 0; i < 24000000; i++) asm volatile ("nop"); // display ingame leaderboard 
+            }
+          }
+        }
+      }
     }
 
-    // Memorize game
+    // Memorize game selection
     while (get_sw() == 0x8 && current_state == IDLE)
     {
+      draw_image(VGA, 4); // memorize1
       for (int i = 0; i < 6000000; i++) asm volatile ("nop");
 
-      // Arrow left
-      draw_image(VGA, 4);
+      draw_image(VGA, 5); // memorize2
       for (int i = 0; i < 6000000; i++) asm volatile ("nop");
-      
-      draw_image(VGA, 5);
     }
   }
 
@@ -177,3 +208,4 @@ int main ( void )
   other lives with the money they win from passing each level. 
   */
 }
+
