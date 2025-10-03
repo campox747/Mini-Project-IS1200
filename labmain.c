@@ -1,12 +1,124 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+
 #define SCREEN_X 320
 #define SCREEN_Y 240
 #define IMAGE_SIZE (SCREEN_X * SCREEN_Y)
-// all the static images of our arcade
 
 extern void enable_interrupt();
 
 enum State { IDLE, RUNNING, PAUSED };
 enum State current_state = IDLE;
+
+// global variables
+volatile unsigned char* VGA = (volatile unsigned char*)0x08000000;
+volatile int *VGA_CTRL = (volatile int*) 0x04000100; // pointer to VGA DMA
+int timeout = 0;
+
+/* if we need scroll */
+// *(VGA_CTRL+1) = (unsigned int) (VGA+y_ofs*320); // pointer to back buffer
+// *(VGA_CTRL+0) = 0; // write to perform the swap
+// y_ofs= (y_ofs+ 1) % 240;
+
+int timexreact[100]; // 100 element array to store all the times of the players
+
+
+int times[10]; // PROBLEM -> EVERY PLAYER SHOULD HAVE THEIR OWN ARRAY OF TIMES
+int i = 0; // counter -> SAME PROBLEM AS ABOVE WE NEED A COUNTER FOR EVERY PLAYER
+/* show time function for the display time screen */
+void show_time(int yourtime) // maybe showtime should take as inputs yourtime, username -> so that the function knows which players time list should be updated
+{
+  int bestime = times[0];
+  int worstime = times[0];
+
+  // compute bestime
+  for (int j = 0; j < 10; j++)
+  {
+    if (bestime > times[j])
+    {
+      bestime = times[j];
+    }
+
+    if (i > 9 && bestime > yourtime)
+    {
+      bestime = yourtime;
+    }
+  }
+  // we haven't yet updated the array of times with the time I just scored so...
+
+  // compute worstime
+  for (int w = 0; w < 10; w++)
+  {
+    int pos = 0; // position of the worst time 
+
+    if (worstime < times[w])
+    {
+      worstime = times[w];
+      pos = w; 
+    }
+
+    /* if we have more than 10 times we substitute the worstime with the second worst */
+    if (i > 9 && worstime > yourtime) 
+    {
+      times[pos] = yourtime; // since the worstime variable is updated every time you enter the show_time function whenever 
+                            // all the times a player scores more than 10 times we enter the new time just scored at the worstime position
+    }
+  }
+
+  // if i < 10 it means there is still available space in the array hence I can store my time without the need of deliting the worst time from the array
+  if (i < 10)
+  {
+    times[i] = yourtime;
+  }
+  i++; // update the counter
+
+  draw_image(VGA, 9); // the image with just the blue screen behind
+
+  int y_offset = 120;
+  char yourtime[20];
+  sprintf(yourtime, "%d", bestime);
+  draw_text(VGA, 150, y_offset, yourtime); // PROBLEM -> HOW DO WE DO THIS draw_text FUNCTION?
+}
+
+/* leaderboard description */
+typedef struct 
+{
+  char name[20];
+  int best_time;
+} Player;
+
+Player leaderboard[6];  // store top 5 players + the players best time
+
+void show_leaderboard() 
+{
+  draw_image(VGA, 12); // leaderboard
+
+  for (int i = 0; i < 6; i++) 
+  {
+    int y_offset = 100 + i*20;  // vertical spacing
+
+    // Draw player name
+    draw_text(VGA, 150, y_offset, leaderboard[i].name);
+
+    // Draw player score (converted to string)
+    char score_text[20];
+    sprintf(score_text, "%d", leaderboard[i].best_time);
+    draw_text(VGA, 300, y_offset, score_text);
+  }
+}
+
+/* random number function */
+static unsigned int seed = 123456789;  // can initialize with anything
+
+unsigned int rand(void) {
+  seed = (1103515245 * seed + 12345) & 0x7fffffff; // random numbers to increase the level of randomness
+  return seed%24000000;
+}
+
+void srand(unsigned int s) {
+  seed = s;
+}
 
 /* set leds */
 void set_leds(int led_mask) 
@@ -88,18 +200,42 @@ void handle_interrupt(unsigned cause)
 {  
   volatile int* status = (volatile int*)0x04000020;
   *status = 0x0;
+  timeout++;
+  timeout %= 510000000;
+}
 
-  //volatile char *VGA = (volatile char*) 0x08000000; // pointer to VGA pixel buffer
-  //volatile int *VGA_CTRL = (volatile int*) 0x04000100; // pointer to VGA DMA
-  // *(VGA_CTRL+1) = (unsigned int) (VGA+y_ofs*320); // pointer to back buffer
-  // *(VGA_CTRL+0) = 0; // write to perform the swap
-  // y_ofs= (y_ofs+ 1) % 240;
+void reactiongame() 
+{
+  while(1) // random delay -> show go screen -> from that screen you make start a timer -> perform subtraction between initial time and the moment you stopped the timer
+  {
+    draw_image(VGA, 7); // reactready
+    srand(timeout);
+    int randelay = 6000000 + rand(); // random delay
+    for (int i = 0; i < randelay; i++) asm volatile ("nop"); // wait
+    
+    timeout = 0;
+    draw_image(VGA, 8); // reactgo
+    while (timeout < 500000000)
+    {
+      if (get_btn())
+      {
+        int yourtime = (timeout*40)/10^6;
+        while(1)
+        {
+          show_time(yourtime); // displaytime
+          for (int i = 0; i < 24000000; i++) asm volatile ("nop"); // display ingame leaderboard & play again
+
+          draw_image(VGA, 11); // leaderboard with user name + their best time + overall players
+        }
+      }
+    }
+    draw_image(VGA, 10); // tooslow & play again
+  }
 }
 
 int main ( void ) // delays to adjust because it is slow in switching images
 {
   labinit();
-  volatile unsigned char* VGA = (volatile unsigned char*)0x08000000;
   
   // global logic
   while(1)
@@ -115,7 +251,6 @@ int main ( void ) // delays to adjust because it is slow in switching images
       for (int i = 0; i < 6000000; i++) asm volatile ("nop");
     }
 
-    int btn_pressed = 0;          // Button flag for reaction game (1 when button is pressed)
     // Reaction game selection
     while (get_sw() == 0x1 && current_state == IDLE)
     {
@@ -130,29 +265,11 @@ int main ( void ) // delays to adjust because it is slow in switching images
         current_state = RUNNING;
         while(1)
         {
-        draw_image(VGA, 6); // descreact
+          draw_image(VGA, 6); // descreact
 
           if (get_btn())
           {
-            while(1)
-            {
-              draw_image(VGA, 7); // reactready
-              // random delay -> show go screen -> from that screen you make start a timer -> perform subtraction between initial time and the moment you stopped the timer
-
-              draw_image(VGA, 8); // reactgo
-
-              //When button is pressed, send interrupt - timer stops - time elapsed is displayed
-              // In handle interrupt function for the button, update the "btn_pressed" flag to avoid displaying the "too slow" screen
-
-              
-
-              if (btn_pressed == 0)
-              {
-                draw_image(VGA, 10); // tooslow
-              }
-
-              for (int i = 0; i < 24000000; i++) asm volatile ("nop"); // display ingame leaderboard 
-            }
+            reactiongame();
           }
         }
       }
@@ -169,37 +286,6 @@ int main ( void ) // delays to adjust because it is slow in switching images
     }
   }
 
-
-  
-  /* general usage of switches and buttons */
-  /*
-  
-
-  if (get_sw() == 0x4)
-  {
-    // vai in alto
-  }
-
-  if (get_sw() == 0x8)
-  {
-    // vai in basso
-  }
-
-  if (get_btn() == 0x1)
-  {
-    // clicca
-  }
-  */
-
-  /* 
-  The 1st game consists of a reaction game.
-  The player should click as soon as the screen turns green, and the board records the time it took the player to do so.
-  After having stored the result of the player (by keeping only the highest score), while showing the leaderboard it
-  asks the player if they want to play again. 
-  */
-  
-  
-
   /* 
   The 2nd game consistst of a memory game. 
   The board displays an increasing combination of boxes. The player should then click the right combination to pass the 'level'.
@@ -208,4 +294,3 @@ int main ( void ) // delays to adjust because it is slow in switching images
   other lives with the money they win from passing each level. 
   */
 }
-
