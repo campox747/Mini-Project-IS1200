@@ -8,6 +8,8 @@ extern void enable_interrupt();
 volatile unsigned char* VGA = (volatile unsigned char*)0x08000000;
 volatile int *VGA_CTRL = (volatile int*) 0x04000100; // pointer to VGA DMA
 long timeout = 0;
+int coins = 100; // for memory game
+int lives = 3; // for memory game
 
 /* if we need scroll */
 // *(VGA_CTRL+1) = (unsigned int) (VGA+y_ofs*320); // pointer to back buffer
@@ -17,12 +19,14 @@ long timeout = 0;
 /* random number function */
 static unsigned int seed = 123456789;  // can initialize with anything
 
-unsigned int rand(void) {
+unsigned int rand(void) 
+{
   seed = (1103515245 * seed + 12345) & 0x7fffffff; // random numbers to increase the level of randomness
   return seed%24000000;
 }
 
-void srand(unsigned int s) {
+void srand(unsigned int s) 
+{
   seed = s;
 }
 
@@ -177,12 +181,91 @@ void reactiongame()
         break;
       }
 
-      if (get_sw() == 0x10)
+      if (get_sw() == 512)
       {
         return;
       }
     }
   }
+}
+
+void set_memory(int img_number)
+{
+  switch (img_number)
+  {
+    case 0: draw_image(VGA, 22); for (int i = 0; i < 3000000; i++) asm volatile ("nop"); break;
+    case 1: draw_image(VGA, 13); for (int i = 0; i < 3000000; i++) asm volatile ("nop"); break;
+    case 2: draw_image(VGA, 14); for (int i = 0; i < 3000000; i++) asm volatile ("nop"); break;
+    case 3: draw_image(VGA, 15); for (int i = 0; i < 3000000; i++) asm volatile ("nop"); break;
+    case 4: draw_image(VGA, 16); for (int i = 0; i < 3000000; i++) asm volatile ("nop"); break;
+    case 5: draw_image(VGA, 17); for (int i = 0; i < 3000000; i++) asm volatile ("nop"); break;
+    case 6: draw_image(VGA, 18); for (int i = 0; i < 3000000; i++) asm volatile ("nop"); break;
+    case 7: draw_image(VGA, 19); for (int i = 0; i < 3000000; i++) asm volatile ("nop"); break;
+    case 8: draw_image(VGA, 20); for (int i = 0; i < 3000000; i++) asm volatile ("nop"); break;
+    case 9: draw_image(VGA, 21); for (int i = 0; i < 3000000; i++) asm volatile ("nop"); break;
+  }
+}
+
+void display_money()
+{
+  int i = coins%10;
+  int j = (coins/10)%10;
+  int w = (coins/100)%10;
+  int h = (coins/1000)%10;
+
+  set_display(0, i);
+  set_display(0, j);
+  set_display(0, w);
+  set_display(0, h);
+}
+
+void display_loss(int lives)
+{
+  switch (lives)
+  {
+    case 0: while(1) {draw_image(VGA, 23); if (get_btn()) {while(1) {if (coins > 100) {if (get_btn()) {coins -= 100; lives++; memory_game();}}}}}
+    case 1: while(1) {draw_image(VGA, 25); if (get_btn()) {memory_game();}}
+    case 2: while(1) {draw_image(VGA, 24); if (get_btn()) {memory_game();}}
+  }
+}
+
+int seq[100];
+int level = 1;
+int counter = 0;
+void memseq(int level)
+{
+  for (int i = 0; i < level; i++)
+  {
+    // creation of a random number
+    srand(level); 
+    int img = 1 + (rand()%9); 
+    // display the sqr on screen
+    set_memory(img);
+    seq[i] = img; 
+  }
+}
+
+void user_sequence() 
+{
+  // logic for the user to move withing the sqrs -> battaglia navale
+  switch (get_sw())
+  {
+    case 9: while(get_sw() == 9){draw_image(VGA, 13); if (get_btn()) {if(seq[counter] == 1) {counter++; break;} lives--; display_loss(lives);}} 
+    case 10: while(get_sw() == 10){draw_image(VGA, 14); if (get_btn()) {if(seq[counter] == 2) {counter++; break;} lives--; display_loss(lives);}}
+    case 12: while(get_sw() == 12){draw_image(VGA, 15); if (get_btn()) {if(seq[counter] == 3) {counter++; break;} lives--; display_loss(lives);}}
+    case 17: while(get_sw() == 17){draw_image(VGA, 16); if (get_btn()) {if(seq[counter] == 4) {counter++; break;} lives--; display_loss(lives);}}
+    case 18: while(get_sw() == 18){draw_image(VGA, 17); if (get_btn()) {if(seq[counter] == 5) {counter++; break;} lives--; display_loss(lives);}}
+    case 20: while(get_sw() == 20){draw_image(VGA, 18); if (get_btn()) {if(seq[counter] == 6) {counter++; break;} lives--; display_loss(lives);}}
+    case 33: while(get_sw() == 33){draw_image(VGA, 19); if (get_btn()) {if(seq[counter] == 7) {counter++; break;} lives--; display_loss(lives);}}
+    case 34: while(get_sw() == 34){draw_image(VGA, 20); if (get_btn()) {if(seq[counter] == 8) {counter++; break;} lives--; display_loss(lives);}}
+    case 36: while(get_sw() == 36){draw_image(VGA, 13); if (get_btn()) {if(seq[counter] == 9) {counter++; break;} lives--; display_loss(lives);}}
+  }
+}
+
+void memory_game()
+{
+  display_money(); // show money on display
+  
 }
 
 int main ( void ) // delays to adjust because it is slow in switching images
@@ -193,7 +276,7 @@ int main ( void ) // delays to adjust because it is slow in switching images
   while(1)
   {
     // Game selection
-    while (get_sw() == 0x0 || get_sw() == 16) 
+    while (get_sw() == 0x0 || get_sw() == 512) 
     {
       draw_image(VGA, 0); // gameselection1
       for (int i = 0; i < 3000000; i++) asm volatile ("nop");
@@ -223,7 +306,7 @@ int main ( void ) // delays to adjust because it is slow in switching images
             reactiongame();
           }
 
-          if (get_sw() == 0x10)
+          if (get_sw() == 512)
           {
             break;
           }
@@ -239,14 +322,36 @@ int main ( void ) // delays to adjust because it is slow in switching images
 
       draw_image(VGA, 5); // memorize2
       for (int i = 0; i < 3000000; i++) asm volatile ("nop");
+
+      if (get_btn())
+      {
+        while(1)
+        {
+          draw_image(VGA, 12); // descmem
+          for (int i = 0; i < 3000000; i++) asm volatile ("nop");
+
+          if (get_btn())
+          {
+            // tutorial of the game
+            draw_image(VGA, 29); // memtutorial1
+            for (int i = 0; i < 3000000; i++) asm volatile ("nop");
+            if (get_btn())
+            {
+              draw_image(VGA, 30); // memtutorial2
+              for (int i = 0; i < 3000000; i++) asm volatile ("nop");
+              if (get_btn())
+              {
+                memory_game();
+              }
+            }
+          }
+
+          if (get_sw() == 512)
+          {
+            break;
+          }
+        }
+      }
     }
   }
-
-  /* 
-  The 2nd game consistst of a memory game. 
-  The board displays an increasing combination of boxes. The player should then click the right combination to pass the 'level'.
-  If the player gets it right then they proceed onto the next level, otherwise they lose a life and stay at the same level. 
-  Each player has three lives, when they reach 0 lives the game is over. The player has a chance for 10 seconds to purchase 
-  other lives with the money they win from passing each level. 
-  */
 }
