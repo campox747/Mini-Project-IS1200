@@ -7,8 +7,7 @@ extern void enable_interrupt();
 // global variables
 volatile unsigned char* VGA = (volatile unsigned char*)0x08000000;
 volatile int *VGA_CTRL = (volatile int*) 0x04000100; // pointer to VGA DMA
-int timeout = 0;
-int back = 0;
+long timeout = 0;
 
 /* if we need scroll */
 // *(VGA_CTRL+1) = (unsigned int) (VGA+y_ofs*320); // pointer to back buffer
@@ -81,6 +80,16 @@ void draw_image(volatile unsigned char *buf, int n){
   }
 }
 
+unsigned int y_ofs= 0;
+/* Below is the function that will be called when an interrupt is triggered. */
+void handle_interrupt(unsigned cause) 
+{  
+  volatile int* status = (volatile int*)0x04000020;
+  *status = 0x0;
+  timeout++;
+  timeout %= 51000000;
+}
+
 /* Add your code here for initializing interrupts. */
 void labinit(void)
 {
@@ -101,16 +110,6 @@ void labinit(void)
   enable_interrupt();
 }
 
-unsigned int y_ofs= 0;
-/* Below is the function that will be called when an interrupt is triggered. */
-void handle_interrupt(unsigned cause) 
-{  
-  volatile int* status = (volatile int*)0x04000020;
-  *status = 0x0;
-  timeout++;
-  timeout %= 51000000;
-}
-
 /* show time function for the display time screen */
 void show_time(int yourtime)
 {
@@ -127,13 +126,14 @@ void reactiongame()
   {
     draw_image(VGA, 7); // reactready
     srand(timeout);
-    int randelay = 3000000 + rand(); // random delay
+    int randelay = 3000000 + rand(); // pseudo-random delay
     for (int i = 0; i < randelay; i++) asm volatile ("nop"); // wait
     
     timeout = 0;
     draw_image(VGA, 8); // reactgo
-    while (timeout < 50000000) // PROBLEM IT SEEMS THIS LOOP LASTS NOTHING ... WHY??
+    while (timeout < 50000000)
     {
+      asm volatile ("nop");
       if (get_btn())
       {
         int yourtime = (timeout*40)/1000000;
@@ -154,26 +154,32 @@ void reactiongame()
             draw_image(VGA, 11); // bestime & play again
             show_time(bestime);
 
-            // back to home
-            if (get_sw() == 0x16) 
-            {
-              back = 1;
-              return;
-            }
-
             // play again
             if (get_btn())
             {
-              break;
+              reactiongame();
+            }
+
+            if (get_sw() == 0x10)
+            {
+              return;
             }
           }
         }
       }
-      draw_image(VGA, 10); // toolate & play again
-      // play again
+    }
+    draw_image(VGA, 10); // toolate
+    // play again
+    while(1)
+    {
       if (get_btn())
       {
         break;
+      }
+
+      if (get_sw() == 0x10)
+      {
+        return;
       }
     }
   }
@@ -187,9 +193,8 @@ int main ( void ) // delays to adjust because it is slow in switching images
   while(1)
   {
     // Game selection
-    while ((get_sw() == 0x0 || get_sw() == 0x16)) 
+    while (get_sw() == 0x0 || get_sw() == 16) 
     {
-
       draw_image(VGA, 0); // gameselection1
       for (int i = 0; i < 3000000; i++) asm volatile ("nop");
       
@@ -208,7 +213,7 @@ int main ( void ) // delays to adjust because it is slow in switching images
 
       if (get_btn())
       {
-        while(back == 0)
+        while(1)
         {
           draw_image(VGA, 6); // descreact
           for (int i = 0; i < 3000000; i++) asm volatile ("nop"); 
@@ -217,8 +222,12 @@ int main ( void ) // delays to adjust because it is slow in switching images
           {
             reactiongame();
           }
+
+          if (get_sw() == 0x10)
+          {
+            break;
+          }
         }
-        back = 0; 
       }
     }
 
