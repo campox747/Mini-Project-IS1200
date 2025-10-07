@@ -41,18 +41,20 @@ void draw_image(volatile unsigned char *buf, int n);
 
 // ==================== handle interrupt & labinit ======================
 
-void handle_interrupt(unsigned cause) {  
-  volatile int* status = (volatile int*)0x04000020;
-  *status = 0x0;
-  timeout++;
-  timeout %= 51000000;
+void handle_interrupt(unsigned cause) { 
+    if(cause == 16){ 
+    volatile int* status = (volatile int*)0x04000020;
+    *status = 0x0;
+    //timeout++;
+    //timeout %= 51000000;
+  }
 }
 
 void labinit(void) {
   volatile int *periodl = (volatile int*)0x04000028;
   volatile int *periodh = (volatile int*)0x0400002c;
-  *periodl = 0x28;
-  *periodh = 0x0;
+  *periodl = 29999999 &0x0ffff; //0x1c9c380
+  *periodh = 29999999 >> 16;
 
   volatile int *control = (volatile int*)0x04000024;
   *control = 0x7;
@@ -94,23 +96,23 @@ int get_btn(void) {
 
 // ==================== draw image ============================
 void draw_image(volatile unsigned char *buf, int n){
-  volatile unsigned char* VGA = (VGA_FRONT == (volatile unsigned char*)0x08000000)
+  /*volatile unsigned char* VGA = (VGA_FRONT == (volatile unsigned char*)0x08000000)
                                 ? (volatile unsigned char*)(0x08000000 + 0x12c00)
-                                : (volatile unsigned char*)0x08000000;
+                                : (volatile unsigned char*)0x08000000;*/
 
-  const unsigned char *starting_bg = (const unsigned char*) (0x02000000 + n * IMAGE_SIZE);
+  volatile unsigned char *starting_bg = (volatile unsigned char*) (0x02000000 + n * IMAGE_SIZE);
 
   for (int y = 0; y < SCREEN_Y; y++)
   {
     for (int x = 0; x < SCREEN_X; x++) 
     {
-      VGA[y * SCREEN_X + x] = starting_bg[(y) * 320 + x];
+      buf[y * SCREEN_X + x] = starting_bg[(y) * 320 + x];
     }
   }
-  *(VGA_CTRL+1) = (unsigned int)VGA;
-  *(VGA_CTRL+0) = 0;
+  //*(VGA_CTRL+1) = (unsigned int)VGA;
+  //*(VGA_CTRL+0) = 0;
 
-  VGA_FRONT = VGA;
+  //VGA_FRONT = VGA;
 }
 
 // =================== delay function =======================
@@ -430,8 +432,8 @@ int main(void)
         set_displays(2,0);
         set_displays(3,0);
 
-        draw_image(VGA, 0); wait(3000000);
-        draw_image(VGA, 1); wait(3000000);
+        draw_image(VGA, 0); wait(10000000);
+        draw_image(VGA, 1); wait(10000000);
 
         // select reach sx
         if (get_sw() == 0x8) {
