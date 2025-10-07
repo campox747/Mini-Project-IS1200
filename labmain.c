@@ -45,16 +45,16 @@ void handle_interrupt(unsigned cause) {
     if(cause == 16){ 
     volatile int* status = (volatile int*)0x04000020;
     *status = 0x0;
-    //timeout++;
-    //timeout %= 51000000;
+    timeout++;
+    timeout %= 51000000;
   }
 }
 
 void labinit(void) {
   volatile int *periodl = (volatile int*)0x04000028;
   volatile int *periodh = (volatile int*)0x0400002c;
-  *periodl = 29999999 &0x0ffff; //0x1c9c380
-  *periodh = 29999999 >> 16;
+  *periodl = 29999 & 0x0ffff; //0x1c9c380
+  *periodh = 29999 >> 16 & 0xffff;
 
   volatile int *control = (volatile int*)0x04000024;
   *control = 0x7;
@@ -71,16 +71,16 @@ void set_displays(int display_number, int value) {
   volatile int *display = display_base + (display_number * 4);
 
   switch (value) {
-    case 0: *display = 0x40; break;
-    case 1: *display = 0x79; break;
-    case 2: *display = 0x24; break;
-    case 3: *display = 0x30; break;
-    case 4: *display = 0x19; break;
-    case 5: *display = 0x12; break;
-    case 6: *display = 0x02; break;
-    case 7: *display = 0x78; break;
-    case 8: *display = 0x00; break;
-    case 9: *display = 0x18; break;
+    case 0: *display = 0xc0; break;
+    case 1: *display = 0xf9; break;
+    case 2: *display = 0xa4; break;
+    case 3: *display = 0xb0; break;
+    case 4: *display = 0x99; break;
+    case 5: *display = 0x92; break;
+    case 6: *display = 0x82; break;
+    case 7: *display = 0xf8; break;
+    case 8: *display = 0x80; break;
+    case 9: *display = 0x98; break;
   }
 }
 
@@ -115,7 +115,7 @@ void draw_image(volatile unsigned char *buf, int n){
   //VGA_FRONT = VGA;
 }
 
-// =================== delay function =======================
+// ===================== delay function ==========================
 static inline void wait(int cycles) {
   for (int i = 0; i < cycles; i++) asm volatile ("nop");
 }
@@ -142,14 +142,14 @@ void show_time(int yourtime) {
 
 void display_level(void) {
 
-  draw_image(VGA, 26); // yourlevel
+  draw_image(VGA, 30); // yourlevel
   set_displays(0, level % 10);
   set_displays(1, (level / 10) % 10);
   set_displays(2, 0);
   set_displays(3, 0);
   wait(24000000);
 
-  draw_image(VGA, 27); // currentbest
+  draw_image(VGA, 31); // bestlevel
   set_displays(0, bestlevel % 10);
   set_displays(1, (bestlevel / 10) % 10); 
   set_displays(2, 0);
@@ -160,15 +160,15 @@ void display_level(void) {
 void set_memory(int img_number) {
 
   switch (img_number) {
-    case 1: draw_image(VGA, 13); wait(3000000); break;
-    case 2: draw_image(VGA, 14); wait(3000000); break;
-    case 3: draw_image(VGA, 15); wait(3000000); break;
-    case 4: draw_image(VGA, 16); wait(3000000); break;
-    case 5: draw_image(VGA, 17); wait(3000000); break;
-    case 6: draw_image(VGA, 18); wait(3000000); break;
-    case 7: draw_image(VGA, 19); wait(3000000); break;
-    case 8: draw_image(VGA, 20); wait(3000000); break;
-    case 9: draw_image(VGA, 21); wait(3000000); break;
+    case 1: draw_image(VGA, 16); wait(3000000); break;
+    case 2: draw_image(VGA, 17); wait(3000000); break;
+    case 3: draw_image(VGA, 18); wait(3000000); break;
+    case 4: draw_image(VGA, 19); wait(3000000); break;
+    case 5: draw_image(VGA, 20); wait(3000000); break;
+    case 6: draw_image(VGA, 21); wait(3000000); break;
+    case 7: draw_image(VGA, 22); wait(3000000); break;
+    case 8: draw_image(VGA, 23); wait(3000000); break;
+    case 9: draw_image(VGA, 24); wait(3000000); break;
   }
 }
 
@@ -227,11 +227,11 @@ void display_loss(int cur_lives)
     {
       if (coins >= 100)
       {
-        draw_image(VGA, 23);
+        draw_image(VGA, 26); // buylife
       }
       else 
       {
-        draw_image(VGA, 31);
+        draw_image(VGA, 27);
       }
       wait(30000000);
       for (int i = 0; i < 12000000; i++) 
@@ -250,7 +250,7 @@ void display_loss(int cur_lives)
         if (get_sw() == 512) { g_state = STATE_MAIN_MENU; return; }
       }
 
-      draw_image(VGA, 31); // youlosteverything
+      draw_image(VGA, 27); // youlosteverything
       wait(24000000);
 
       if (bestlevel < level) bestlevel = level;
@@ -261,7 +261,7 @@ void display_loss(int cur_lives)
     }
 
     case 1: {
-      draw_image(VGA, 25); 
+      draw_image(VGA, 29); // lives1
       wait(18000000);
       
       g_state = STATE_MEM_READY;
@@ -270,7 +270,7 @@ void display_loss(int cur_lives)
 
     case 2: 
     {
-      draw_image(VGA, 24); 
+      draw_image(VGA, 28); // lives2
       wait(18000000);
       g_state = STATE_MEM_READY;
       return;
@@ -281,18 +281,17 @@ void display_loss(int cur_lives)
 // ===================== user sequence =====================
 int user_sequence_step(void) 
 {
-
   switch (get_sw()) 
   {
     case 0x9:
       while (get_sw() == 0x9) 
       {
-        draw_image(VGA, 21);
+        draw_image(VGA, 24);
+        if (get_sw() == 521) return -1;
         if (get_btn()) {
-          if (seq[counter] == 1) { counter++; return 1; }
+          if (seq[counter] == 9) { wait(5000000); counter++; return 1; }
           lives--;
           display_loss(lives);
-          if (get_sw() == 512) return -1;
           return 0;
         }
       }
@@ -300,12 +299,12 @@ int user_sequence_step(void)
 
     case 0xa:
       while (get_sw() == 0xa) {
-        draw_image(VGA, 20);
+        draw_image(VGA, 23);
+        if (get_sw() == 522) return -1;
         if (get_btn()) {
-          if (seq[counter] == 2) { counter++; return 1; }
+          if (seq[counter] == 8) { wait(5000000); counter++; return 1; }
           lives--;
           display_loss(lives);
-          if (get_sw() == 512) return -1;
           return 0;
         }
       }
@@ -313,12 +312,12 @@ int user_sequence_step(void)
 
     case 0xc:
       while (get_sw() == 0xc) {
-        draw_image(VGA, 19);
+        draw_image(VGA, 22);
+        if (get_sw() == 524) return -1;
         if (get_btn()) {
-          if (seq[counter] == 3) { counter++; return 1; }
+          if (seq[counter] == 7) { wait(5000000); counter++; return 1; }
           lives--;
           display_loss(lives);
-          if (get_sw() == 512) return -1;
           return 0;
         }
       }
@@ -327,12 +326,12 @@ int user_sequence_step(void)
     case 0x11:
       while (get_sw() == 0x11) 
       {
-        draw_image(VGA, 18);
+        draw_image(VGA, 21);
+        if (get_sw() == 529) return -1;
         if (get_btn()) {
-          if (seq[counter] == 4) { counter++; return 1; }
+          if (seq[counter] == 6) { wait(5000000); counter++; return 1; }
           lives--;
           display_loss(lives);
-          if (get_sw() == 512) return -1;
           return 0;
         }
       }
@@ -340,12 +339,12 @@ int user_sequence_step(void)
 
     case 18:
       while (get_sw() == 18) {
-        draw_image(VGA, 17);
+        draw_image(VGA, 20);
+        if (get_sw() == 530) return -1;
         if (get_btn()) {
-          if (seq[counter] == 5) { counter++; return 1; }
+          if (seq[counter] == 5) { wait(5000000); counter++; return 1; }
           lives--;
           display_loss(lives);
-          if (get_sw() == 512) return -1;
           return 0;
         }
       }
@@ -353,12 +352,12 @@ int user_sequence_step(void)
 
     case 20:
       while (get_sw() == 20) {
-        draw_image(VGA, 16);
+        draw_image(VGA, 19);
+        if (get_sw() == 532) return -1;
         if (get_btn()) {
-          if (seq[counter] == 6) { counter++; return 1; }
+          if (seq[counter] == 4) { wait(5000000); counter++; return 1; }
           lives--;
           display_loss(lives);
-          if (get_sw() == 512) return -1;
           return 0;
         }
       }
@@ -366,12 +365,12 @@ int user_sequence_step(void)
 
     case 33:
       while (get_sw() == 33) {
-        draw_image(VGA, 15);
+        draw_image(VGA, 18);
+        if (get_sw() == 545) return -1;
         if (get_btn()) {
-          if (seq[counter] == 7) { counter++; return 1; }
+          if (seq[counter] == 3) { wait(5000000); counter++; return 1; }
           lives--;
           display_loss(lives);
-          if (get_sw() == 512) return -1;
           return 0;
         }
       }
@@ -379,12 +378,12 @@ int user_sequence_step(void)
 
     case 34:
       while (get_sw() == 34) {
-        draw_image(VGA, 14);
+        draw_image(VGA, 17);
+        if (get_sw() == 546) return -1;
         if (get_btn()) {
-          if (seq[counter] == 8) { counter++; return 1; }
+          if (seq[counter] == 2) { wait(5000000); counter++; return 1; }
           lives--;
           display_loss(lives);
-          if (get_sw() == 512) return -1;
           return 0;
         }
       }
@@ -392,12 +391,12 @@ int user_sequence_step(void)
 
     case 36:
       while (get_sw() == 36) {
-        draw_image(VGA, 13);
+        draw_image(VGA, 16);
+        if (get_sw() == 548) return -1;
         if (get_btn()) {
-          if (seq[counter] == 9) { counter++; return 1; }
+          if (seq[counter] == 1) { wait(5000000); counter++; return 1; }
           lives--;
           display_loss(lives);
-          if (get_sw() == 512) return -1;
           return 0;
         }
       }
@@ -406,7 +405,7 @@ int user_sequence_step(void)
     default:
       break;
   }
-  return 1;
+  return 2;
 }
 
 // ===================== main =====================
@@ -414,7 +413,7 @@ int main(void)
 {
   labinit();
 
-  g_state = STATE_MAIN_MENU; // main menu
+ g_state = STATE_MAIN_MENU; // main menu
 
   while (1) 
   {
@@ -432,8 +431,8 @@ int main(void)
         set_displays(2,0);
         set_displays(3,0);
 
-        draw_image(VGA, 0); wait(10000000);
-        draw_image(VGA, 1); wait(10000000);
+        draw_image(VGA, 0); wait(5000000); // gameselection1
+        draw_image(VGA, 1); wait(5000000); // gameselection2
 
         // select reach sx
         if (get_sw() == 0x8) {
@@ -449,8 +448,8 @@ int main(void)
 
       // ======= reaction game selection =======
       case STATE_SELECT_REACT_DESC: {
-        draw_image(VGA, 2); wait(1500000);
-        draw_image(VGA, 3); wait(1500000);
+        draw_image(VGA, 2); wait(1500000); // reactime1
+        draw_image(VGA, 3); wait(1500000); // reactime2
         if (get_btn()) {
           g_state = STATE_REACT_READY_1;
         }
@@ -459,7 +458,7 @@ int main(void)
 
       // ------ game description ------
       case STATE_REACT_READY_1: {
-        draw_image(VGA, 6); wait(3000000);
+        draw_image(VGA, 6); wait(3000000); // descreact
         if (get_btn()) { g_state = STATE_REACT_READY_2; }
         if (get_sw() == 512) g_state = STATE_MAIN_MENU;
       } break;
@@ -477,39 +476,42 @@ int main(void)
       case STATE_REACT_GO_RUNNING: {
         draw_image(VGA, 8); // reactgo
         
-        while (timeout < 50000000) { // generate random delay
+        while (timeout < 3000) { // generate random delay
           asm volatile ("nop");
           if (get_btn()) {
-            int yourtime = (int)((timeout * 40) / 1000000);
+            int yourtime = (int)(timeout);
             if (bestime > yourtime) bestime = yourtime;
             
-            draw_image(VGA, 9); // display result and best time
+            draw_image(VGA, 9); // lookboard
             show_time(yourtime);
             wait(50000000);
+            
             g_state = STATE_REACT_BEST_AND_AGAIN;
             break;
           }
           if (get_sw() == 512) { g_state = STATE_MAIN_MENU; break; }
         }
-        if (timeout >= 50000000) {
+        
+        if (g_state == STATE_REACT_GO_RUNNING) { // so that it goes in here only if the button was triggered and the state didn't change
           g_state = STATE_REACT_TOO_LATE;
         }
-      } break;
+        break;
+      }
 
       case STATE_REACT_BEST_AND_AGAIN: {
-        draw_image(VGA, 11); // bestime & play again
+        draw_image(VGA, 10); // bestime & play again
         show_time(bestime);
         
         if (get_btn()) { // play again
           g_state = STATE_REACT_READY_2; // restart
         }
-        if (get_sw() == 0x10) {
+        if (get_sw() == 512) {
           g_state = STATE_MAIN_MENU;
         }
       } break;
 
       case STATE_REACT_TOO_LATE: {
-        draw_image(VGA, 10); // toolate
+        draw_image(VGA, 11); // toolate
 
         if (get_btn()) { // either restart or esc
           g_state = STATE_REACT_READY_2;
@@ -531,7 +533,7 @@ int main(void)
 
       // --------- game description ----------
       case STATE_SELECT_MEM_TUTORIAL1: {
-        draw_image(VGA, 12); wait(1500000);
+        draw_image(VGA, 12); wait(1500000); // descmem
         if (get_btn()) {
           g_state = STATE_SELECT_MEM_TUTORIAL2;
         }
@@ -539,12 +541,12 @@ int main(void)
       } break;
 
       case STATE_SELECT_MEM_TUTORIAL2: {
-        draw_image(VGA, 29); wait(1500000);
+        draw_image(VGA, 13); wait(1500000); // memtutorial1
         if (get_btn()) 
         {
             while(1)
             {
-                draw_image(VGA, 30); wait(1500000);
+                draw_image(VGA, 14); wait(1500000); // memtutorial2
                 if (get_btn()) 
                 { // start game
                     lives = 3;
@@ -564,7 +566,7 @@ int main(void)
       case STATE_MEM_READY: {
         display_money();
         counter = 0;
-        draw_image(VGA, 22); // schermo "center/ready"
+        draw_image(VGA, 15); // sqr0
         wait(9000000);
         // before generating a new sequence, changes the seed for a greater level of randomness
         srand((unsigned int)(seed ^ level ^ timeout));
@@ -573,7 +575,7 @@ int main(void)
 
       case STATE_MEM_SHOW_SEQUENCE: {
         memseq(level);      // display & save seq
-        draw_image(VGA, 22);
+        draw_image(VGA, 15); // sqr0
         wait(9000000);
         counter = 0;
         g_state = STATE_MEM_WAIT_INPUT;
@@ -584,7 +586,10 @@ int main(void)
         int r = user_sequence_step();
         if (r == -1) { g_state = STATE_MAIN_MENU; break; } // esc
         if (r == 0) { /* wrong */} 
-        else { 
+        if (r == 1) { 
+          // create image "correct!"
+          draw_image(VGA, 33); // correct selection
+          wait(10000000);
           // correct if the whole sequence has been completed
           if (counter == level) {
             g_state = STATE_MEM_GOODJOB;
@@ -594,10 +599,10 @@ int main(void)
 
       case STATE_MEM_GOODJOB: {
         counter = 0;
-        draw_image(VGA, 28); // goodjob
-        wait(18000000);
+        draw_image(VGA, 25); // goodjob
         coins += (2*level);
         if (level % 5 == 0) coins *= 2;
+        wait(18000000);
         level++;
         g_state = STATE_MEM_READY; // next level
       } break;
