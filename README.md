@@ -1,2 +1,3 @@
 # Mini-Project-IS1200
-Final project for Computer Hardware Engineering course 
+Code must be compiled using Linux or a Virtual Machine that supports it and then run over the DE10-Lite board. Additionally, images from the 'raw' folder must be uploaded to the board memory beforehand by running the script in 'load.sh'. When the program starts, it is possible to interact with it using the switches and pressing the button: in the main menu, switch #0 (from the right) is used to access Memory Game and switch #3 for Reaction Game. Pressing the button will select the respective mini-game. There, the tutorial will explain its rules. At (almost) any point of the program, turning on only switch #10 (the left most one) will return the player to the main menu. 
+Good luck and have fun!
