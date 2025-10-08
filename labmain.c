@@ -1,9 +1,82 @@
+// Authored by Francesco Camporeale & Vittorio Fiammenghi
+
 // ===================== config =====================
 #define SCREEN_X 320
 #define SCREEN_Y 240
 #define IMAGE_SIZE (SCREEN_Y * SCREEN_X)
 
 extern void enable_interrupt();
+
+// =================== Performance analysis =======================
+extern void printc();
+extern void print();
+extern void print_dec();
+int mcycles = 0;
+int minstret = 0;
+int mhpmcounter3 = 0;
+int mhpmcounter4 = 0;
+int mhpmcounter5 = 0;
+int mhpmcounter6 = 0;
+int mhpmcounter7 = 0;
+int mhpmcounter8 = 0;
+int mhpmcounter9 = 0;
+
+void analysis() {
+  asm("csrr %0, mcycle" : "=r"(mcycles) );    // Read mcycles
+
+  print("\nTime for reaction game() was: ");  //Print value
+  print_dec(mcycles);
+  print("\n");
+  
+  asm("csrr %0, minstret" : "=r"(minstret) );    // Read number of instructions retired
+
+  print("\nMinstret: ");  //Print value
+  print_dec(minstret);
+  print("\n"); 
+
+  asm("csrr %0, mhpmcounter3" : "=r"(mhpmcounter3) );    // Read number of memory instructions retired
+
+  print("\nmhpmcounter3: ");  //Print value
+  print_dec(mhpmcounter3);
+  print("\n"); 
+
+  asm("csrr %0, mhpmcounter4" : "=r"(mhpmcounter4) );    // Read number of times fetch resulted in I cache miss
+
+  print("\nmhpmcounter4: ");  //Print value
+  print_dec(mhpmcounter4);
+  print("\n"); 
+
+  asm("csrr %0, mhpmcounter5" : "=r"(mhpmcounter5) );    // Read number of times memory operation resulted in D cache miss
+
+  print("\nmhpnmcounter5: ");  //Print value
+  print_dec(mhpmcounter5);
+  print("\n"); 
+
+  asm("csrr %0, mhpmcounter6" : "=r"(mhpmcounter6) );    // Read number of CPU stalls due to I-cache miss
+
+  print("\nCPU stalls due to I-cache misses: ");  //Print value
+  print_dec(mhpmcounter6);
+  print("\n"); 
+
+  asm("csrr %0, mhpmcounter7" : "=r"(mhpmcounter7) );    // Read number of CPU stalls fue to D-cache miss
+
+  print("\nCPU stalls due to D-cache misses:");  //Print value
+  print_dec(mhpmcounter7);
+  print("\n"); 
+
+  asm("csrr %0, mhpmcounter8" : "=r"(mhpmcounter8) );    // Read number of CPU stalls due to data hazards
+
+  print("\nCPU stalls due to data hazards:");  //Print value
+  print_dec(mhpmcounter8);
+  print("\n"); 
+
+  asm("csrr %0, mhpmcounter9" : "=r"(mhpmcounter9) );    // Read number of CPU stalls fue to ALU
+
+  print("\nCPU stalls due to ALU:");  //Print value
+  print_dec(mhpmcounter9);
+  print("\n");  
+}
+
 
 // =================== VGA =======================
 volatile unsigned char* VGA_FRONT = (volatile unsigned char*)0x08000000;
@@ -464,6 +537,18 @@ int main(void)
       } break;
 
       case STATE_REACT_READY_2: {
+
+        // Clear the CSRs 
+        asm volatile ("csrw minstret, x0");
+        asm volatile ("csrw mhpmcounter3, x0");
+        asm volatile ("csrw mhpmcounter4, x0");
+        asm volatile ("csrw mhpmcounter5, x0");
+        asm volatile ("csrw mhpmcounter6, x0");
+        asm volatile ("csrw mhpmcounter7, x0");
+        asm volatile ("csrw mhpmcounter8, x0");
+        asm volatile ("csrw mhpmcounter9, x0");
+        asm volatile ("csrw mcycle, x0");
+        
         draw_image(VGA, 7); // reactready
         
         srand(timeout); // random delay
@@ -481,6 +566,8 @@ int main(void)
           if (get_btn()) {
             int yourtime = (int)(timeout);
             if (bestime > yourtime) bestime = yourtime;
+
+            analysis();     // Print performance analysis values
             
             draw_image(VGA, 9); // lookboard
             show_time(yourtime);
@@ -564,6 +651,18 @@ int main(void)
 
       // ======= set up game =======
       case STATE_MEM_READY: {
+
+        // Clear the CSRs 
+        asm volatile ("csrw minstret, x0");
+        asm volatile ("csrw mhpmcounter3, x0");
+        asm volatile ("csrw mhpmcounter4, x0");
+        asm volatile ("csrw mhpmcounter5, x0");
+        asm volatile ("csrw mhpmcounter6, x0");
+        asm volatile ("csrw mhpmcounter7, x0");
+        asm volatile ("csrw mhpmcounter8, x0");
+        asm volatile ("csrw mhpmcounter9, x0");
+        asm volatile ("csrw mcycle, x0");
+
         display_money();
         counter = 0;
         draw_image(VGA, 15); // sqr0
@@ -579,6 +678,8 @@ int main(void)
         wait(9000000);
         counter = 0;
         g_state = STATE_MEM_WAIT_INPUT;
+        
+        analysis();     // Print performance values
       } break;
 
       case STATE_MEM_WAIT_INPUT: {
@@ -587,12 +688,14 @@ int main(void)
         if (r == -1) { g_state = STATE_MAIN_MENU; break; } // esc
         if (r == 0) { /* wrong */} 
         if (r == 1) { 
-          // create image "correct!"
-          draw_image(VGA, 33); // correct selection
-          wait(10000000);
           // correct if the whole sequence has been completed
           if (counter == level) {
             g_state = STATE_MEM_GOODJOB;
+          }
+          else {
+            // "correct!"
+            draw_image(VGA, 32); // correct selection
+            wait(10000000);
           }
         }
       } break;
