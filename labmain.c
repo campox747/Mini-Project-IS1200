@@ -8,9 +8,8 @@
 extern void enable_interrupt();
 
 // =================== Performance analysis =======================
-extern void printc();
-extern void print();
-extern void print_dec();
+#include "performance.h"
+
 int mcycles = 0;
 int minstret = 0;
 int mhpmcounter3 = 0;
@@ -20,62 +19,6 @@ int mhpmcounter6 = 0;
 int mhpmcounter7 = 0;
 int mhpmcounter8 = 0;
 int mhpmcounter9 = 0;
-
-void analysis() {
-  asm("csrr %0, mcycle" : "=r"(mcycles) );    // Read mcycles
-
-  print("\nTime for reaction game() was: ");  //Print value
-  print_dec(mcycles);
-  print("\n");
-  
-  asm("csrr %0, minstret" : "=r"(minstret) );    // Read number of instructions retired
-
-  print("\nMinstret: ");  //Print value
-  print_dec(minstret);
-  print("\n"); 
-
-  asm("csrr %0, mhpmcounter3" : "=r"(mhpmcounter3) );    // Read number of memory instructions retired
-
-  print("\nmhpmcounter3: ");  //Print value
-  print_dec(mhpmcounter3);
-  print("\n"); 
-
-  asm("csrr %0, mhpmcounter4" : "=r"(mhpmcounter4) );    // Read number of times fetch resulted in I cache miss
-
-  print("\nmhpmcounter4: ");  //Print value
-  print_dec(mhpmcounter4);
-  print("\n"); 
-
-  asm("csrr %0, mhpmcounter5" : "=r"(mhpmcounter5) );    // Read number of times memory operation resulted in D cache miss
-
-  print("\nmhpnmcounter5: ");  //Print value
-  print_dec(mhpmcounter5);
-  print("\n"); 
-
-  asm("csrr %0, mhpmcounter6" : "=r"(mhpmcounter6) );    // Read number of CPU stalls due to I-cache miss
-
-  print("\nCPU stalls due to I-cache misses: ");  //Print value
-  print_dec(mhpmcounter6);
-  print("\n"); 
-
-  asm("csrr %0, mhpmcounter7" : "=r"(mhpmcounter7) );    // Read number of CPU stalls fue to D-cache miss
-
-  print("\nCPU stalls due to D-cache misses:");  //Print value
-  print_dec(mhpmcounter7);
-  print("\n"); 
-
-  asm("csrr %0, mhpmcounter8" : "=r"(mhpmcounter8) );    // Read number of CPU stalls due to data hazards
-
-  print("\nCPU stalls due to data hazards:");  //Print value
-  print_dec(mhpmcounter8);
-  print("\n"); 
-
-  asm("csrr %0, mhpmcounter9" : "=r"(mhpmcounter9) );    // Read number of CPU stalls fue to ALU
-
-  print("\nCPU stalls due to ALU:");  //Print value
-  print_dec(mhpmcounter9);
-  print("\n");  
-}
 
 
 // =================== VGA =======================
@@ -169,10 +112,6 @@ int get_btn(void) {
 
 // ==================== draw image ============================
 void draw_image(volatile unsigned char *buf, int n){
-  /*volatile unsigned char* VGA = (VGA_FRONT == (volatile unsigned char*)0x08000000)
-                                ? (volatile unsigned char*)(0x08000000 + 0x12c00)
-                                : (volatile unsigned char*)0x08000000;*/
-
   volatile unsigned char *starting_bg = (volatile unsigned char*) (0x02000000 + n * IMAGE_SIZE);
 
   for (int y = 0; y < SCREEN_Y; y++)
@@ -182,10 +121,6 @@ void draw_image(volatile unsigned char *buf, int n){
       buf[y * SCREEN_X + x] = starting_bg[(y) * 320 + x];
     }
   }
-  //*(VGA_CTRL+1) = (unsigned int)VGA;
-  //*(VGA_CTRL+0) = 0;
-
-  //VGA_FRONT = VGA;
 }
 
 // ===================== delay function ==========================
